@@ -28,7 +28,10 @@ APhotoPawn::APhotoPawn()
 void APhotoPawn::BeginPlay()
 {
 	Super::BeginPlay();
+
+	Camera->PostProcessSettings.bOverride_DepthOfFieldFstop = 1;
 	LensFocalLengthMM = CameraLens.MinFocalLengthMM;
+	ApertureIndex = 0;
 }
 
 float APhotoPawn::FocalLengthtoFOV(float FocalLength)
@@ -60,7 +63,6 @@ void APhotoPawn::CapturePhoto()
 		FString SavePath = FPaths::ProjectSavedDir() / TEXT("TestSave.png");
 		TArray<uint8> OutData;
 		FMemoryWriter MemoryWriter(OutData);
-		
 		bool bSuccess = FImageUtils::ExportRenderTarget2DAsPNG(RenderTarget, MemoryWriter);
 		
 		if(bSuccess)
@@ -82,7 +84,19 @@ void APhotoPawn::CapturePhoto()
 
 void APhotoPawn::Zoom(float ZoomDelta)
 {
-	LensFocalLengthMM += ZoomDelta;
+	LensFocalLengthMM = FMath::Clamp(
+		LensFocalLengthMM+ZoomDelta,
+		CameraLens.MinFocalLengthMM,
+		CameraLens.MaxFocalLengthMM);
+	
 	Camera->SetFieldOfView(FocalLengthtoFOV(LensFocalLengthMM));
+}
+
+void APhotoPawn::ChangeAperture(float ApertureDelta)
+{
+	ApertureIndex = FMath::Clamp(ApertureIndex + (1*ApertureDelta), 0, CameraLens.FStops.Num());
+	
+	float Aperture = CameraLens.FStops[ApertureIndex];
+	Camera->PostProcessSettings.DepthOfFieldFstop = Aperture;
 }
 

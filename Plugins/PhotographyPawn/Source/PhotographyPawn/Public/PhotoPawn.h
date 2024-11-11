@@ -15,11 +15,14 @@ struct FRealCameraLens
 {
 	GENERATED_BODY()
 	
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float MinFocalLengthMM = 24.f;
 	
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float MaxFocalLengthMM = 70.f;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	TArray<float> FStops;
 };
 
 UCLASS()
@@ -54,6 +57,9 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 	float LensFocalLengthMM;
+	
+	UPROPERTY(EditAnywhere)
+	int ApertureIndex;
 
 	UFUNCTION()
 	float FocalLengthtoFOV(float FocalLength);
@@ -71,6 +77,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void Zoom(float ZoomDelta);
+
+	UFUNCTION(BlueprintCallable)
+	void ChangeAperture(float ApertureDelta);
 
 	UPROPERTY(BlueprintReadOnly)
 	float ZoomSpeed = 0.1f;
