@@ -30,8 +30,11 @@ void APhotoPawn::BeginPlay()
 	Super::BeginPlay();
 
 	Camera->PostProcessSettings.bOverride_DepthOfFieldFstop = 1;
+	SceneCapture->PostProcessSettings.bOverride_DepthOfFieldFstop = 1;
 	LensFocalLengthMM = CameraLens.MinFocalLengthMM;
 	ApertureIndex = 0;
+	
+	ChangeAperture(0.f);
 }
 
 float APhotoPawn::FocalLengthtoFOV(float FocalLength)
@@ -50,7 +53,6 @@ void APhotoPawn::Tick(float DeltaTime)
 void APhotoPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
 }
 
 void APhotoPawn::CapturePhoto()
@@ -90,13 +92,15 @@ void APhotoPawn::Zoom(float ZoomDelta)
 		CameraLens.MaxFocalLengthMM);
 	
 	Camera->SetFieldOfView(FocalLengthtoFOV(LensFocalLengthMM));
+	UE_LOG(LogTemp, Log, TEXT("Focal Length: %f"), LensFocalLengthMM);
 }
 
 void APhotoPawn::ChangeAperture(float ApertureDelta)
 {
-	ApertureIndex = FMath::Clamp(ApertureIndex + (1*ApertureDelta), 0, CameraLens.FStops.Num());
+	ApertureIndex = FMath::Clamp(ApertureIndex + (1*ApertureDelta), 0, CameraLens.FStops.Num()-1);
 	
 	float Aperture = CameraLens.FStops[ApertureIndex];
 	Camera->PostProcessSettings.DepthOfFieldFstop = Aperture;
+	SceneCapture->PostProcessSettings.DepthOfFieldFstop = Aperture;
+	UE_LOG(LogTemp, Log, TEXT("Aperture: %f"), Aperture);
 }
-
