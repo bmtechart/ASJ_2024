@@ -4,11 +4,12 @@
 
 #include "Engine/Scene.h"
 #include "CoreMinimal.h"
-#include "GameFramework/Pawn.h"
+#include "GameFramework/Character.h"
 #include "PhotoPawn.generated.h"
 
 class UCameraComponent;
 class USceneCaptureComponent2D;
+class UStaticMeshComponent;
 
 USTRUCT(BlueprintType)
 struct FRealCameraLens
@@ -26,7 +27,7 @@ struct FRealCameraLens
 };
 
 UCLASS()
-class PHOTOGRAPHYPAWN_API APhotoPawn : public APawn
+class PHOTOGRAPHYPAWN_API APhotoPawn : public ACharacter
 {
 	GENERATED_BODY()
 
@@ -38,32 +39,56 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Components")
 	UCameraComponent* Camera;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Components")
 	USceneCaptureComponent2D* SceneCapture;
-	
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* CameraMesh;
 	
 	/**
 	 * These settings will override the camera and scene capture post process settings. This variable will be changed
-	 * when the player updates the camera settings in-game. 
+	 * when the player updates the camera settings in-game.
 	 */
-	UPROPERTY(EditAnywhere)
-	FPostProcessSettings CameraSettings;
+	UPROPERTY(EditAnywhere, Category = "Photography")
+	FPostProcessSettings PhotoSettings;
 
-	UPROPERTY(EditAnywhere)
+	/**
+	 * This variable is used to cache the default post process settings of the player camera.
+	 * When exiting photo mode, the camera will revert to these settings. 
+	 */
+	UPROPERTY(BlueprintReadOnly)
+	FPostProcessSettings DefaultPostProcessSettings;
+
+	UPROPERTY(EditAnywhere, Category = "Photography")
 	FRealCameraLens CameraLens;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Photography")
 	float LensFocalLengthMM;
+
+	float DefaultCameraFOV;
+	bool DefaultCameraConstrainAspectRatio;
+	float DefaultCameraAspectRatio;
 	
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Photography")
 	int ApertureIndex;
+
+	/**
+	 * Number of photos taken in this session of the game. Does not count photos taken in previous playthroughs. 
+	 */
+	UPROPERTY(BlueprintReadOnly)
+	int NumPhotosTaken;
 
 	UFUNCTION()
 	float FocalLengthtoFOV(float FocalLength);
-	
+
+	UFUNCTION()
+	void CacheDefaultCameraSettings();
+
+	UFUNCTION()
+	void ResetCameraSettings();
 
 public:	
 	// Called every frame
@@ -83,5 +108,11 @@ public:
 
 	UPROPERTY(BlueprintReadOnly)
 	float ZoomSpeed = 0.1f;
+
+	UFUNCTION(BlueprintCallable)
+	void EnterPhotoMode();
+
+	UFUNCTION(BlueprintCallable)
+	void ExitPhotoMode();
 
 };

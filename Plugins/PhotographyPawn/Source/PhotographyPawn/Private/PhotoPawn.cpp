@@ -2,6 +2,8 @@
 
 
 #include "PhotoPawn.h"
+
+
 #include "Camera/CameraComponent.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -14,14 +16,19 @@ APhotoPawn::APhotoPawn()
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-	SetRootComponent(Camera);
+	Camera->SetupAttachment(GetRootComponent());
 
 	//Scene capture component will copy the camera and render what it sees to render texture
 	//render texture will be saved as a .png for later use
 	SceneCapture = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("Scene Capture"));
 	SceneCapture->SetupAttachment(Camera);
 	
+	GetMesh()->SetupAttachment(Camera);
+
+	CameraMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CameraMesh"));
+	CameraMesh->SetupAttachment(GetMesh(), FName(TEXT("hand_r")));
 }
 
 // Called when the game starts or when spawned
@@ -29,12 +36,12 @@ void APhotoPawn::BeginPlay()
 {
 	Super::BeginPlay();
 
+	CacheDefaultCameraSettings();
+	
 	Camera->PostProcessSettings.bOverride_DepthOfFieldFstop = 1;
 	SceneCapture->PostProcessSettings.bOverride_DepthOfFieldFstop = 1;
 	LensFocalLengthMM = CameraLens.MinFocalLengthMM;
 	ApertureIndex = 0;
-	
-	ChangeAperture(0.f);
 }
 
 float APhotoPawn::FocalLengthtoFOV(float FocalLength)
@@ -42,11 +49,26 @@ float APhotoPawn::FocalLengthtoFOV(float FocalLength)
 	return FMath::RadiansToDegrees(2 * FMath::Atan(35.f/(2*FocalLength)));
 }
 
+void APhotoPawn::CacheDefaultCameraSettings()
+{
+	DefaultPostProcessSettings = Camera->PostProcessSettings;
+	DefaultCameraFOV = Camera->FieldOfView;
+	DefaultCameraConstrainAspectRatio = Camera->bConstrainAspectRatio;
+	DefaultCameraAspectRatio = Camera->AspectRatio;
+}
+
+void APhotoPawn::ResetCameraSettings()
+{
+	Camera->PostProcessSettings = DefaultPostProcessSettings;
+	Camera->SetFieldOfView(DefaultCameraFOV);
+	Camera->SetConstraintAspectRatio(DefaultCameraConstrainAspectRatio);
+	Camera->SetAspectRatio(DefaultCameraAspectRatio);
+}
+
 // Called every frame
 void APhotoPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 // Called to bind functionality to input
@@ -62,9 +84,11 @@ void APhotoPawn::CapturePhoto()
 	
 	if(UTextureRenderTarget2D* RenderTarget = SceneCapture->TextureTarget)
 	{
-		FString SavePath = FPaths::ProjectSavedDir() / TEXT("TestSave.png");
+		FString FileName = FString::Printf(TEXT("Temp/Temp_%d.png"), NumPhotosTaken);
+		FString SavePath = FPaths::ProjectSavedDir() / FileName;
 		TArray<uint8> OutData;
 		FMemoryWriter MemoryWriter(OutData);
+		
 		bool bSuccess = FImageUtils::ExportRenderTarget2DAsPNG(RenderTarget, MemoryWriter);
 		
 		if(bSuccess)
@@ -78,7 +102,12 @@ void APhotoPawn::CapturePhoto()
 			{
 				UE_LOG(LogTemp, Error, TEXT("Failed to save render target to file %s"), *SavePath);
 			}
+			NumPhotosTaken += 1;
 		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("Error! Cannot capture photo. Render target not set on Scene Capture Component."));
 	}
 	//update scene capture component
 	//evaluate photo based on trace from the camera, is it in focus? What is in frame?
@@ -97,10 +126,38 @@ void APhotoPawn::Zoom(float ZoomDelta)
 
 void APhotoPawn::ChangeAperture(float ApertureDelta)
 {
+
+	if(CameraLens.FStops.Num() < 1)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Warning! Lens settings on photo pawn contains no FStops. Cannot set aperture."));
+		return;
+	}
+	
 	ApertureIndex = FMath::Clamp(ApertureIndex + (1*ApertureDelta), 0, CameraLens.FStops.Num()-1);
 	
 	float Aperture = CameraLens.FStops[ApertureIndex];
 	Camera->PostProcessSettings.DepthOfFieldFstop = Aperture;
 	SceneCapture->PostProcessSettings.DepthOfFieldFstop = Aperture;
 	UE_LOG(LogTemp, Log, TEXT("Aperture: %f"), Aperture);
+}
+
+void APhotoPawn::EnterPhotoMode()
+{
+	Camera->SetConstraintAspectRatio(true);
+	Camera->SetAspectRatio(1.33f);
+
+	SceneCapture->FOVAngle = Camera->FieldOfView;
+	//disable movement
+	//Zoom(0.f);
+	//ChangeAperture(0.f);
+	//Set Camera FOV
+	//Set Scene Capture FOV
+	//Set Camera post process settings
+	
+}
+
+void APhotoPawn::ExitPhotoMode()
+{
+	ResetCameraSettings();
+	//re-enable movement
 }
