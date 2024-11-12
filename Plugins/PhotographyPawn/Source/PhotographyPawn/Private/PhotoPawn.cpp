@@ -9,6 +9,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Serialization/MemoryWriter.h"
 #include "ImageUtils.h"
+#include "EnhancedInputSubsystems.h"
 
 // Sets default values
 APhotoPawn::APhotoPawn()
@@ -75,6 +76,17 @@ void APhotoPawn::Tick(float DeltaTime)
 void APhotoPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	if(ULocalPlayer* LocalPlayer = Cast<ULocalPlayer>(Controller))
+	{
+		if(UEnhancedInputLocalPlayerSubsystem* InputSystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
+		{
+			if(FirstPersonInputMappingContext)
+			{
+				
+			}
+		}
+	}
 }
 
 void APhotoPawn::CapturePhoto()
@@ -135,10 +147,39 @@ void APhotoPawn::ChangeAperture(float ApertureDelta)
 	
 	ApertureIndex = FMath::Clamp(ApertureIndex + (1*ApertureDelta), 0, CameraLens.FStops.Num()-1);
 	
-	float Aperture = CameraLens.FStops[ApertureIndex];
-	Camera->PostProcessSettings.DepthOfFieldFstop = Aperture;
-	SceneCapture->PostProcessSettings.DepthOfFieldFstop = Aperture;
-	UE_LOG(LogTemp, Log, TEXT("Aperture: %f"), Aperture);
+	FStop = CameraLens.FStops[ApertureIndex];
+	Camera->PostProcessSettings.DepthOfFieldFstop = FStop;
+	SceneCapture->PostProcessSettings.DepthOfFieldFstop = FStop;
+	UE_LOG(LogTemp, Log, TEXT("Aperture: %f"), FStop);
+}
+
+void APhotoPawn::AutoFocus()
+{
+
+	//draw line trace from camera and set post process focal distance if you hit something
+	FVector StartLocation = Camera->GetComponentLocation();
+	FVector EndLocation = StartLocation + Camera->GetForwardVector()*100000.f;
+
+	FHitResult HitResult;
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(
+		HitResult,
+		StartLocation,
+		EndLocation,
+		ECC_Visibility,
+		CollisionParams);
+
+	if(!bHit)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Focus trace failed to hit anything. Focal distance remains unchanged."));
+		return;
+	}
+
+	UE_LOG(LogTemp, Log, TEXT("Focus trace successful! Focusing on actor: %s at distance %f"), *HitResult.GetActor()->GetName(), HitResult.Distance);
+	Camera->PostProcessSettings.DepthOfFieldFocalDistance = HitResult.Distance;
+	SceneCapture->PostProcessSettings.DepthOfFieldFocalDistance = HitResult.Distance;
 }
 
 void APhotoPawn::EnterPhotoMode()

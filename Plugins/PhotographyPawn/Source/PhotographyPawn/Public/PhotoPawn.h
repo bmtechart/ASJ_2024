@@ -10,6 +10,7 @@
 class UCameraComponent;
 class USceneCaptureComponent2D;
 class UStaticMeshComponent;
+class UInputMappingContext;
 
 USTRUCT(BlueprintType)
 struct FRealCameraLens
@@ -65,7 +66,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Photography")
 	FRealCameraLens CameraLens;
 
-	UPROPERTY(EditAnywhere, Category = "Photography")
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Photography")
 	float LensFocalLengthMM;
 
 	float DefaultCameraFOV;
@@ -74,6 +75,15 @@ protected:
 	
 	UPROPERTY(EditAnywhere, Category = "Photography")
 	int ApertureIndex;
+
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Photography")
+	float FStop;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputMappingContext* FirstPersonInputMappingContext;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputMappingContext* PhotographyInputMappingContext;
 
 	/**
 	 * Number of photos taken in this session of the game. Does not count photos taken in previous playthroughs. 
@@ -105,6 +115,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void ChangeAperture(float ApertureDelta);
+
+	UFUNCTION(BlueprintCallable)
+	void AutoFocus();
 
 	UPROPERTY(BlueprintReadOnly)
 	float ZoomSpeed = 0.1f;
