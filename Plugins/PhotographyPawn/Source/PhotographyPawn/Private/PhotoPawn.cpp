@@ -43,6 +43,7 @@ void APhotoPawn::BeginPlay()
 	SceneCapture->PostProcessSettings.bOverride_DepthOfFieldFstop = 1;
 	LensFocalLengthMM = CameraLens.MinFocalLengthMM;
 	ApertureIndex = 0;
+	ChangeAperture(0.f);
 }
 
 float APhotoPawn::FocalLengthtoFOV(float FocalLength)
